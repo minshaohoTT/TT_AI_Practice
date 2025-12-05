@@ -1,0 +1,139 @@
+// Copyright 2013, all rights reserved.
+// See below (end of file) for extended copyright information.
+//
+//;# push (@INC, "./rtl"); # Now this happens in "Makefile.local"
+//; require fftgen;       # log2(), iterate()
+//; require twiddle_lib;  # setglobals(), printwires(), gen_twiddle_mem_decl(), fft_gen_twiddles()
+//;
+// ---------------- Begin default Genesis2 parameter summary ----------------
+//
+//; # parameter() calls send default Genesis output to top of .v file
+//; my $npoints = parameter
+//;    (Name=>'n_fft_points', Val=>16,
+//;     Doc=>'Number of complex data values to process.');
+//;
+//; my $upc = parameter
+//;    (Name=>'units_per_cycle', Val=>1.0, List=>[0.25, 0.5, 1.0, 2.0, 4.0],
+//;     Doc=>'Number active butterfly units per cycle (.25 means one unit at 1/4 speed)');
+//; 
+//; my $data_width = parameter
+//;    (Name=>'data_width', Val=>32, List=>[32, 64],
+//;     Doc=>'32 for sp float (shortreal), 64 for dp (real)');
+//;
+// ---------------- End default Genesis2 parameter summary ----------------
+
+////////////////////////////////////////////////////////////////////////
+// module `mname`
+//
+// Usage: twiddle(n_fft_points, units_per_cycle), where
+//
+//   n_fft_points can be any power of two greater than 8;
+//   units_per_cycle can be 0.25, 0.5, 1.0, 2.0 or 4.0
+//
+// Example(s):  twiddle n=16 upc=1.0
+//
+//;##############################################################################
+// Parameters:
+//; foreach my $p (@{$self->{ParametersList}}) {
+//;     my $val = $self->{Parameters}->{$p}->{Val};
+//;     my $doc = $self->{Parameters}->{$p}->{Doc};
+//;     printf("//     %-20s %8s %s\n", $p, "($val)", $doc);
+//; }
+//
+//;##############################################################################
+// Derived values:
+//; 
+//; my $timestep = 1;
+//; my $nunits   = 1;
+//; 
+//; if ($upc <= 1.0) {      # One butterfly__________________________
+//;     $timestep = 1/$upc;
+//;     printf("// Building twiddles for ONE butterfly unit\n");
+//;     printf("// local_clock = global_clock/%d\n", 1/$upc);
+//; }
+//; else {                  # More than one butterfly________________
+//;     $nunits = $upc;
+//;     printf("// Building twiddles for %d butterfly units\n", $upc);
+//;     printf("// local_clock = global_clock\n", 1/$upc);
+//; }
+//    $timestep (`$timestep`) = time it takes (cycles) for butterfly unit to complete one operation
+//    $nunits   (`$nunits`)   = number of butterfly units we have to build (four maximum)
+//;
+//; my $nlevels = fftgen::log2($npoints);            
+//; my $ncalcs_per_unit = ($nlevels * ($npoints/2))/$nunits;
+//; if ($nunits > 4) { print "\n\nERROR (twiddle.vp): Too many butterfly units ($nunits > 4)\n\n"; }
+//    $nlevels  (`$nlevels`)  = levels (columns) in the (virtual) bfly network
+//    $ncalcs_per_unit (`$ncalcs_per_unit`) = total ncalcs to be performed by each bfly unit
+//
+//; # Inform the twiddle perl libraries about the parameters we've settled on.
+//; twiddle_lib::setglobals($npoints, $nlevels, $nunits, $ncalcs_per_unit, $data_width);
+
+//; ####################################################################
+//; # Generate submodules.
+//; #
+//; my $lclock = generate('fftclock','LCLK', DIV=>$timestep); # Divide by two
+//; 
+//; ####################################################################
+//; # Verilog code starts here:
+//;
+// Will produce `$nlevels` levels (columns) in the (virtual) butterfly network.
+
+module `mname`
+  (
+   //;   twiddle_lib::printwires("   ", "io_list");
+   );
+   
+   //////////////////////////////////////////////////////////////////////////////
+   // DECLARATIONS
+   //;    twiddle_lib::gen_twiddle_mem_decl();
+/*
+$shortrealtobits( 1.00000000e+00) = 32'h3f80_0000   
+$shortrealtobits( 0.00000000e+00) = 32'h0000_0000
+$shortrealtobits(-1.00000000e+00) = 32'hbf80_0000
+$shortrealtobits( 7.07106781e-01) = 32'h3f35_04f3
+$shortrealtobits( 6.12323400e-17) = 32'h248d_3132
+$shortrealtobits(-7.07106781e-01) = 32'hbf35_04f3
+*/
+   //////////////////////////////////////////////////////////////////////////////////////
+   // INIT BLOCKS
+   initial begin
+      //;#    twiddle_lib::fft_gen_twiddles("      ", $npoints, $nunits, $data_width);
+      //;#    twiddle_lib::fft_gen_twiddles2("//FOOP ", $npoints, $nunits, $data_width);
+
+      //;    twiddle_lib::fft_gen_twiddles2("      ", $npoints, $nunits, $data_width);
+   end
+
+   //; for (my $i=0; $i<$nunits; $i++) {
+   assign BFLY`$i`_twiddle_cos_o = BFLY`$i`_twiddle_mem_cos[cycle_num_i];
+   assign BFLY`$i`_twiddle_sin_o = BFLY`$i`_twiddle_mem_sin[cycle_num_i];
+
+   //; }
+endmodule
+
+
+/////////////////////////////////////////////////////////////////////////////////
+// MIT License
+// 
+// Copyright (c) 2013 Stephen E. Richardson and Stanford University
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IM-
+// PLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNEC-
+// TION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// 
+// For more information please contact
+// Stephen E. Richardson  steveri@stanford.edu (Stanford University)
+// Prof. Mark Horowitz   horowitz@stanford.edu (Stanford University)
+/////////////////////////////////////////////////////////////////////////////////

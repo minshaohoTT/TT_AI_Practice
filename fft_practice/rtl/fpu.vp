@@ -1,0 +1,132 @@
+// Copyright 2019, all rights reserved.
+// See below (end of file) for extended copyright information.
+//
+//;# push (@INC, "./rtl"); # Now this happens in "Makefile.local"
+//; require fftgen;        # log2(), iterate()
+//;
+//; ########################################################################
+//; # PARAMETERS cause default Genesis output to .v file
+//; ########################################################################
+//;
+// ---------------- Begin default Genesis2 parameter summary ----------------
+//;
+//; my $whose_fpu = parameter
+//;    (Name=>'whose_fpu', Val=>"sr",
+//;     List=>["sr", "dw"],
+//;     Doc=>'sr=homegrown-fpu, dw=designware-fpu (where avail)');
+//;
+//; my $op = parameter
+//;    (Name=>'op', Val=>"add",
+//;     List=>["add", "sub", "mul", "div"],
+//;     Doc=>'add, sub, mul, or div');
+//;
+//; ########################################################################
+//;
+// ---------------- End default Genesis2 parameter summary ----------------
+
+////////////////////////////////////////////////////////////////////////
+// module `mname`
+//
+// Usage: fpu(a, b, z)
+//
+//   z = f(a,b) (single precision floating-point)
+
+module `mname` (
+  input  logic [31:0] a,
+  input  logic [31:0] b,
+  output logic [31:0] z
+  );
+  //; ########################################################################
+  //; if ("$whose_fpu" eq "sr") {
+    //; my $add_op = "1'b0"; my $sub_op = "1'b1";  # same as designware i guess
+    //; if ($op eq "mul") {
+
+        srmul MUL (.a(a), .b(b), .z(z));
+
+    //; } elsif ($op eq "add") {
+
+        addsub FPU (.op(`$add_op`), .a(a), .b(b), .z(z));
+
+    //; } elsif ($op eq "sub") {
+
+    \`ifndef SRSUB_TEST
+        addsub FPU (.op(`$sub_op`), .a(a), .b(b), .z(z));
+    \`else
+        // FIXME really? is this the best place for this???
+        wire [31:0] z1; wire [31:0] z2; wire [31:0] z3; wire [31:0] z4;
+        srsub SUB41(.op(`$sub_op`), .a($shortrealtobits(4.0)), .b($shortrealtobits(1.0)), .z(z1));
+        srsub SUB43(.op(`$sub_op`), .a($shortrealtobits(4.0)), .b($shortrealtobits(3.0)), .z(z2));
+        srsub SUB14(.op(`$sub_op`), .a($shortrealtobits(1.0)), .b($shortrealtobits(4.0)), .z(z3));
+        srsub SUB34(.op(`$sub_op`), .a($shortrealtobits(3.0)), .b($shortrealtobits(4.0)), .z(z4));
+        assign z = z1|z2|z3|z4;
+    \`endif
+    //; } # $op eq "sub"
+  //; 
+
+  //; ########################################################################
+  //; } elsif ("$whose_fpu" eq "dw") {
+
+    // /hd/cad/synopsys/dc_shell/latest/dw/doc/datasheets/dw_fp_mult.pdf
+    logic [7:0] status; // unused :(
+      // [0] zero
+      // [1] infinity
+      // [2] invalid
+      // [3] tiny (denorm small)
+      // [4] huge (denorm big)
+      // [5] inexact
+      // [6] hugeint (int > MAXINT)
+      // [7] passa/div0
+
+    logic [3:0] rnd;
+      // 000 nearest (even)
+      // 001 zero
+      // 010 pos infinity
+      // 011 neg infinity
+      // 100 nearest up
+      // 101 away from zero
+      // 110 reserved
+      // 111 reserved
+    assign rnd = 3'b000; // nearest even
+
+    //; my $add_op = "1'b0"; my $sub_op = "1'b1";
+    //; 
+    //; if ($op eq "mul") {
+        DW_fp_mult #(23, 8, 1)// #(sig, exp, IEEE compliance (0 or 1)) 
+        MUL (.a(a), .b(b), .z(z), .rnd(rnd), .status(status));
+    //; } elsif ($op eq "add") {
+        DW_fp_addsub #(23, 8, 1)// #(sig, exp, IEEE compliance (0 or 1)) 
+        ADD (.a(a), .b(b), .z(z), .op(`$add_op`), .rnd(rnd), .status(status));
+    //; } elsif ($op eq "sub") {
+        DW_fp_addsub #(23, 8, 1)// #(sig, exp, IEEE compliance (0 or 1)) 
+        SUB (.a(a), .b(b), .z(z), .op(`$sub_op`), .rnd(rnd), .status(status));
+    //; } # $op eq "sub"
+  //; } # ("$whose_fpu" eq "designware")
+
+endmodule
+
+/////////////////////////////////////////////////////////////////////////////////
+// MIT License
+// 
+// Copyright (c) 2013 Stephen E. Richardson and Stanford University
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IM-
+// PLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+// FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+// COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+// IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNEC-
+// TION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// 
+// For more information please contact
+// Stephen E. Richardson  steveri@stanford.edu (Stanford University)
+// Prof. Mark Horowitz   horowitz@stanford.edu (Stanford University)
+/////////////////////////////////////////////////////////////////////////////////

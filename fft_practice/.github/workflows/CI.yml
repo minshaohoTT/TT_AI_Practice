@@ -1,0 +1,57 @@
+name: CI
+
+########################################################################
+on:
+  # Every push
+  push:
+
+  # When requested manually
+  workflow_dispatch:
+
+  # Schedule NOTE ONLY WORKS FOR MAIN BRANCH :(
+  schedule:
+    # Once a month at 3am ( 3am UTC ~ 10am (yesterday) PDT :( )
+    # Once a month at 3am ( 11pm UTC ~ 6am PDT )
+    # ( min hr day JAN-DEC MON-SUN )
+    - cron: '0 23 1 * *'
+
+
+########################################################################
+jobs:
+
+  # This workflow contains a single job called "CI"
+  CI:
+
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Action, branch, and repo information.
+      - run: echo Action = ${{ github.event_name }}, branch = ${{ github.ref }}
+
+      - name: Install '${{ github.repository }}', branch '${{ github.ref }}'
+        uses: actions/checkout@v2
+
+      - name: Install verilator 5.028
+        uses: veryl-lang/setup-verilator@v1
+        with:
+          version: 5.028
+
+      # See bin/simv_analysis/README.md etc.
+      - name: 'SIMV ANALYZER'
+        run: cd bin/simv_analysis; make test
+
+      # ------------------------------------------------------------------------
+      - name: 'PERL v. PYTHON quick test (golden_test.{pl,py})'
+        run : test/test-pypl.sh --gold
+
+      - name: 'PERL v. PYTHON extended test (ALL_LDBG + fft_golden_model.{pl.py})'
+        run : test/test-pypl.sh --comp
+
+      # ------------------------------------------------------------------------
+      - name: 'FFT REGRESSIONS (verilator+perl)'
+        run : test/test-regress.sh -sim verilator --perl
+
+      - name: 'FFT REGRESSIONS (verilator+python)'
+        run : test/test-regress.sh -sim verilator --python

@@ -1,0 +1,53 @@
+# Compiled files
+*.log
+*.vpd
+*.fsdb
+*.vcd
+simv
+simv.*
+csrc/
+*.daidir/
+*.vdb/
+*.kdb
+*.sdb
+*.so
+*.o
+*.a
+
+# Build artifacts
+AN.DB/
+vc_hdrs.h
+ucli.key
+depend.list
+*.vf
+*.xml
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+*.log
+*.vpd
+*.fsdb
+*.vcd
+simv
+simv.*
+csrc/
+*.daidir/
+*.vdb/
